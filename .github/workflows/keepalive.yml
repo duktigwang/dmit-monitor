@@ -1,0 +1,35 @@
+name: KeepAlive & Backup Stock Check
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping-and-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Wake / Ping Render Service
+        env:
+          RENDER_SERVICE_URL: ${{ vars.RENDER_SERVICE_URL }}
+        run: |
+          if [ -n "$RENDER_SERVICE_URL" ]; then
+            echo "Pinging $RENDER_SERVICE_URL ..."
+            curl -fsSL --max-time 30 "$RENDER_SERVICE_URL" || true
+          fi
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies & run backup check
+        env:
+          BARK_KEY: ${{ secrets.BARK_KEY }}
+        run: |
+          pip install -q -r requirements.txt
+          python dmit_monitor.py --once

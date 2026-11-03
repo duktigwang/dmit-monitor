@@ -42,6 +42,7 @@ CHECK_INTERVAL = int(os.environ.get("CHECK_INTERVAL", "20"))
 ALERT_REPEAT_TIMES = int(os.environ.get("ALERT_REPEAT_TIMES", "3"))
 SEND_STARTUP_NOTICE = os.environ.get("SEND_STARTUP_NOTICE", "0").strip() == "1"
 PORT = int(os.environ.get("PORT", "8080"))
+SELF_PING_URL = os.environ.get("RENDER_EXTERNAL_URL", "").strip()
 
 HOSTMONIT_SEARCH_API = "https://backend.stock.hostmonit.com/api/product/search"
 TG_DMITNEWS_URL = "https://t.me/s/dmitnews"
@@ -61,6 +62,7 @@ STATE = {
     "status": "starting",
     "target": TARGET_PRODUCT,
     "current_pid": DEFAULT_PID,
+    "started_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     "active_channels": ["hostmonit_api", "dmit_official", "tg_dmitnews", "nodeseek_rss"],
     "dmit_direct_available": None,
     "last_check_utc": None,
@@ -350,6 +352,13 @@ def run_monitor():
             now_hms = datetime.now().strftime("%H:%M:%S")
 
             in_stock, msg = single_check_cycle(cycle)
+
+            # 每 24 轮（约 8 分钟）通过公网域名自唤醒一次，重置 Render 15 分钟休眠计时器
+            if SELF_PING_URL and cycle % 24 == 0 and cycle > 0:
+                try:
+                    http_get(f"{SELF_PING_URL.rstrip('/')}/?keepalive=1", timeout=10)
+                except Exception:
+                    pass
 
             # 每 3 轮（约 60 秒）扫描一次官方 TG 频道与 NodeSeek 论坛新帖
             if cycle % 3 == 0 and cycle > 0:

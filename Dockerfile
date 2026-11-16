@@ -4,6 +4,7 @@ WORKDIR /app
 
 # 设置 Python 输出不缓冲，保证云平台能实时查看日志
 ENV PYTHONUNBUFFERED=1
+ENV TZ=Asia/Shanghai
 
 COPY requirements.txt .
 

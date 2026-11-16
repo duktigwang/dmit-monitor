@@ -19,7 +19,7 @@ import sys
 import threading
 import time
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 try:
@@ -58,14 +58,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger("DMIT-Monitor")
 
+BJT = timezone(timedelta(hours=8))
+
+
+def now_beijing_str() -> str:
+    return datetime.now(BJT).strftime("%Y-%m-%d %H:%M:%S (北京时间)")
+
+
 STATE = {
     "status": "starting",
     "target": TARGET_PRODUCT,
     "current_pid": DEFAULT_PID,
-    "started_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "started_at_beijing": now_beijing_str(),
     "active_channels": ["hostmonit_api", "dmit_official", "tg_dmitnews", "nodeseek_rss"],
     "dmit_direct_available": None,
-    "last_check_utc": None,
+    "last_check_beijing": None,
     "last_result": None,
     "last_stock_change_time": None,
     "in_stock": False,
@@ -348,8 +355,8 @@ def run_monitor():
 
     while True:
         try:
-            now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-            now_hms = datetime.now().strftime("%H:%M:%S")
+            now_bjt = now_beijing_str()
+            now_hms = datetime.now(BJT).strftime("%H:%M:%S")
 
             in_stock, msg = single_check_cycle(cycle)
 
@@ -374,7 +381,7 @@ def run_monitor():
 
             cycle += 1
             STATE["total_checks"] += 1
-            STATE["last_check_utc"] = now_utc
+            STATE["last_check_beijing"] = now_bjt
             STATE["last_result"] = msg
             STATE["bark_configured"] = bool(BARK_KEY)
 
